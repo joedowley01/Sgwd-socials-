@@ -26,8 +26,8 @@ Run `node --test tests/social-chat.test.mjs`. Tests mock OpenAI; real AI replies
 Set Production variables with Functions scope, then redeploy:
 
 - `META_PAGE_ACCESS_TOKEN`: Page access token for Sgwd, marked secret.
-- `META_PAGE_ID`: `1930748400493235`.
-- `META_INSTAGRAM_ACCOUNT_ID`: `17841406512723753`.
+- `META_PAGE_ID`: the Facebook Page ID returned by Meta.
+- `META_INSTAGRAM_ACCOUNT_ID`: the linked Instagram professional account ID returned by Meta.
 - `SGWD_CHAT_PASSPHRASE`: private team passphrase, marked secret; also unlocks AI Chat.
 
 Dashboard → Meta connection → enter the passphrase → Unlock / refresh. The token is never sent to the browser or OpenAI. Requests are authenticated, rate limited, tied to the configured Page and linked Instagram account, bounded by a 22-second timeout and cached in the function instance for five minutes. API v26.0 is pinned. Source timestamps and complete UTC-day reporting windows appear in the app. Meta may lag behind Business Suite.
