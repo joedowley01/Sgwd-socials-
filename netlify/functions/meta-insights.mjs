@@ -1,4 +1,4 @@
-import {createHash, timingSafeEqual} from 'node:crypto';
+import {createHash} from 'node:crypto';
 
 export const config = {rateLimit:{windowLimit:12,windowSize:60,aggregateBy:['ip'],action:'rate_limit'}};
 const json = (body,status=200) => Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
@@ -27,10 +27,8 @@ export default async function handler(req) {
   if (req.method!=='GET') return json({error:'Method not allowed.'},405);
   const origin = req.headers.get('origin');
   if (origin && origin!==new URL(req.url).origin) return json({error:'Request not allowed.'},403);
-  const {META_PAGE_ACCESS_TOKEN:token,META_PAGE_ID:page,META_INSTAGRAM_ACCOUNT_ID:ig,SGWD_CHAT_PASSPHRASE:secret} = process.env;
-  if (!token || !/^\d+$/.test(page||'') || !/^\d+$/.test(ig||'') || !secret) return json({error:'Add META_PAGE_ACCESS_TOKEN, META_PAGE_ID, META_INSTAGRAM_ACCOUNT_ID and SGWD_CHAT_PASSPHRASE to Netlify Production, then redeploy.'},503);
-  const pass = req.headers.get('x-sgwd-chat-pass')||'';
-  if (pass.length>500 || !timingSafeEqual(hash(pass),hash(secret))) return json({error:'Enter the team passphrase to load Meta figures.'},401);
+  const {META_PAGE_ACCESS_TOKEN:token,META_PAGE_ID:page,META_INSTAGRAM_ACCOUNT_ID:ig} = process.env;
+  if (!token || !/^\d+$/.test(page||'') || !/^\d+$/.test(ig||'')) return json({error:'Add META_PAGE_ACCESS_TOKEN, META_PAGE_ID, META_INSTAGRAM_ACCOUNT_ID to Netlify Production, then redeploy.'},503);
   const key = hash(token+':'+page+':'+ig).toString('hex');
   if (cache?.key===key && Date.now()-cache.time<300000) return json(cache.data);
   // Complete UTC days only. Meta may still be processing the most recent day.

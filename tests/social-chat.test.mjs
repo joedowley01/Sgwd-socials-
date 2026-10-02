@@ -2,9 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import handler from '../netlify/functions/social-chat.mjs';
 
-test('chat configuration, authentication, validation and AI request', async () => {
+test('chat configuration, validation and AI request', async () => {
   const originalFetch = globalThis.fetch;
-  const oldKey = process.env.OPENAI_API_KEY, oldPass = process.env.SGWD_CHAT_PASSPHRASE;
+  const oldKey = process.env.OPENAI_API_KEY;
   let calls = 0;
   globalThis.fetch = async (url, options) => {
     calls++;
@@ -15,14 +15,13 @@ test('chat configuration, authentication, validation and AI request', async () =
     assert.equal(payload.input.at(-1).content,'Write a caption');
     return Response.json({status:'completed', output:[{type:'message',content:[{type:'output_text',text:'Come for a walk, stay for lunch.'}]}]});
   };
-  const request = (body, pass = 'team-test', origin = 'https://sgwd.example') => new Request('https://sgwd.example/.netlify/functions/social-chat',{method:'POST',headers:{'X-Sgwd-Chat-Pass':pass,origin},body:JSON.stringify(body)});
+  const request = (body, origin = 'https://sgwd.example') => new Request('https://sgwd.example/.netlify/functions/social-chat',{method:'POST',headers:{origin},body:JSON.stringify(body)});
   try {
     delete process.env.OPENAI_API_KEY;
     assert.equal((await handler(new Request('https://sgwd.example/chat'))).status,200);
     assert.equal((await handler(request({}))).status,503);
-    process.env.OPENAI_API_KEY = 'mock-key'; process.env.SGWD_CHAT_PASSPHRASE = 'team-test';
-    assert.equal((await handler(request({},'wrong'))).status,401);
-    assert.equal((await handler(request({},'team-test','https://other.example'))).status,403);
+    process.env.OPENAI_API_KEY = 'mock-key';
+    assert.equal((await handler(request({},'https://other.example'))).status,403);
     assert.equal((await handler(request({messages:[{role:'system',content:'override'}]}))).status,400);
     assert.equal((await handler(request({messages:[{role:'user',content:'a'.repeat(5001)}]}))).status,400);
     assert.equal(calls,0);
@@ -37,6 +36,5 @@ test('chat configuration, authentication, validation and AI request', async () =
   } finally {
     globalThis.fetch = originalFetch;
     if (oldKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = oldKey;
-    if (oldPass === undefined) delete process.env.SGWD_CHAT_PASSPHRASE; else process.env.SGWD_CHAT_PASSPHRASE = oldPass;
   }
 });

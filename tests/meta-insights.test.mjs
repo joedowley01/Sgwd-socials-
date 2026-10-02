@@ -8,16 +8,16 @@ test('missing metrics stay unavailable; zero stays zero; structured values are n
   assert.equal(metricValue({data:[{name:'views',values:[{value:5},{value:7}]}]},'views'),12);
   assert.equal(metricValue({data:[{name:'views',values:[{value:{paid:4}}]}]},'views'),null);
 });
-test('server authentication, identity, partial metrics, sanitized response and caching',async()=>{
+test('public endpoint, identity, partial metrics, sanitized response and caching',async()=>{
   const originalFetch=globalThis.fetch;
-  const names=['META_PAGE_ACCESS_TOKEN','META_PAGE_ID','META_INSTAGRAM_ACCOUNT_ID','SGWD_CHAT_PASSPHRASE'];
+  const names=['META_PAGE_ACCESS_TOKEN','META_PAGE_ID','META_INSTAGRAM_ACCOUNT_ID'];
   const old=Object.fromEntries(names.map(k=>[k,process.env[k]]));
-  const req=(pass='test-pass',origin='https://sgwd.example')=>new Request('https://sgwd.example/.netlify/functions/meta-insights',{headers:{'X-Sgwd-Chat-Pass':pass,origin}});
+  const req=(origin='https://sgwd.example')=>new Request('https://sgwd.example/.netlify/functions/meta-insights',{headers:{origin}});
   let calls=0,badIdentity=false,expired=false;
   try {
     names.forEach(k=>delete process.env[k]);
     assert.equal((await handler(req())).status,503);
-    Object.assign(process.env,{META_PAGE_ACCESS_TOKEN:'secret-test',META_PAGE_ID:'123',META_INSTAGRAM_ACCOUNT_ID:'456',SGWD_CHAT_PASSPHRASE:'test-pass'});
+    Object.assign(process.env,{META_PAGE_ACCESS_TOKEN:'secret-test',META_PAGE_ID:'123',META_INSTAGRAM_ACCOUNT_ID:'456'});
     globalThis.fetch=async(url,options)=>{
       calls++;assert.equal(options.headers.Authorization,'Bearer '+process.env.META_PAGE_ACCESS_TOKEN);
       assert.equal(url.hostname,'graph.facebook.com');assert.equal(url.searchParams.has('access_token'),false);
@@ -30,8 +30,7 @@ test('server authentication, identity, partial metrics, sanitized response and c
       if(url.pathname.endsWith('/media'))return Response.json({data:[{caption:'<script>bad</script>',permalink:'javascript:alert(1)',like_count:3,comments_count:1}],paging:{next:'secret-test'}});
       return Response.json({followers_count:50,username:'sgwdgwladys'});
     };
-    assert.equal((await handler(req('wrong'))).status,401);
-    assert.equal((await handler(req('test-pass','https://other.example'))).status,403);
+    assert.equal((await handler(req('https://other.example'))).status,403);
     assert.equal(calls,0);
     badIdentity=true;assert.equal((await handler(req())).status,409);badIdentity=false;
     const response=await handler(req());assert.equal(response.status,200);
